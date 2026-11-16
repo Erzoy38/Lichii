@@ -24,7 +24,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install host build tools
-        run: brew install cmake ninja autoconf automake libtool pkg-config nasm
+        run: brew install cmake ninja autoconf automake libtool pkg-config nasm make
       - name: Download iOS MoltenVK
         run: |
           mkdir -p .ios-deps
@@ -47,6 +47,7 @@ jobs:
             -DENABLE_LIBUSB=OFF -DENABLE_CUBEB=OFF -DENABLE_WEB_SERVICE=OFF \
             -DENABLE_UPDATE_CHECKER=OFF -DENABLE_WERROR=OFF \
             -DLICHII_USE_CPM=ON -DCPMUTIL_FORCE_BUNDLED=ON \
+            -DLICHII_USE_EXTERNAL_FFMPEG=ON -DLICHII_USE_BUNDLED_FFMPEG=OFF \
             -DLICHII_USE_BUNDLED_MOLTENVK=OFF \
             -DMOLTENVK_LIBRARY="$PWD/.ios-deps/MoltenVK/MoltenVK/static/MoltenVK.xcframework/ios-arm64/libMoltenVK.a" \
             2>&1 | tee ios-configure.log

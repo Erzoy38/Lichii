@@ -29,6 +29,23 @@ if (NOT LICHII_USE_BUNDLED_FFMPEG)
             --extra-ldflags="-nostdlib"
         )
         set(FFmpeg_IS_CROSS_COMPILING TRUE)
+    elseif (IOS)
+        execute_process(
+            COMMAND xcrun --sdk "${CMAKE_OSX_SYSROOT}" --show-sdk-path
+            OUTPUT_VARIABLE FFmpeg_IOS_SYSROOT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            COMMAND_ERROR_IS_FATAL ANY)
+        list(APPEND FFmpeg_CROSS_COMPILE_FLAGS
+            --enable-cross-compile
+            --arch=arm64
+            --target-os=darwin
+            "--sysroot=${FFmpeg_IOS_SYSROOT}"
+            "--ld=${CMAKE_C_COMPILER}"
+            "--extra-cflags=-arch arm64 -miphoneos-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}"
+            "--extra-cxxflags=-arch arm64 -miphoneos-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}"
+            "--extra-ldflags=-arch arm64 -miphoneos-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}"
+        )
+        set(FFmpeg_IS_CROSS_COMPILING TRUE)
     # User attempts to do a FFmpeg cross compilation because...
     # Here we just quickly test against host/system processors not matching
     # TODO: Test for versions not matching as well?
@@ -296,11 +313,15 @@ else()
 
     # Workaround for Ubuntu 18.04's older version of make not being able to call make as a child
     # with context of the jobserver. Also helps ninja users.
-    execute_process(
-        COMMAND
-            nproc
-        OUTPUT_VARIABLE
-            SYSTEM_THREADS)
+    if (IOS)
+        set(SYSTEM_THREADS 3)
+    else()
+        execute_process(
+            COMMAND
+                nproc
+            OUTPUT_VARIABLE
+                SYSTEM_THREADS)
+    endif()
 
     set(FFmpeg_BUILD_LIBRARIES ${FFmpeg_LIBRARIES})
 
