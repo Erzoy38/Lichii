@@ -1,0 +1,59 @@
+name: Android mobile build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [mobile/android-build]
+    paths:
+      - '.github/workflows/android-mobile.yml'
+      - 'CMakeLists.txt'
+      - 'CMakeModules/**'
+      - 'cpmfile.json'
+      - 'externals/**'
+      - 'src/**'
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: 3
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends autoconf automake libtool nasm ninja-build pkg-config glslang-tools
+          sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'ndk;28.2.13676358' 'cmake;3.31.5'
+      - name: Build ARM64 Android APK
+        working-directory: src/android
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleMainlineRelWithDebInfo --console=plain --stacktrace --max-workers=3
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lichii-android-arm64
+          path: src/android/app/build/outputs/apk/mainline/relWithDebInfo/*.apk
+          if-no-files-found: error
+      - name: Preserve native build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-diagnostics
+          path: |
+            src/android/app/.cxx/**/CMakeCache.txt
+            src/android/app/.cxx/**/CMakeConfigureLog.yaml
+            src/android/app/.cxx/**/build_output.txt
+          if-no-files-found: ignore
+
