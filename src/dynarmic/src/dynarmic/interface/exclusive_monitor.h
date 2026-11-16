@@ -9,7 +9,9 @@
 #pragma once
 
 #include <array>
-#include <atomic>
+#ifdef ARCHITECTURE_arm64
+#include <boost/atomic/atomic_ref.hpp>
+#endif
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -21,6 +23,10 @@ namespace Dynarmic {
 
 using VAddr = std::uint64_t;
 using Vector = std::array<std::uint64_t, 2>;
+
+#ifdef ARCHITECTURE_arm64
+static_assert(boost::atomic_ref<VAddr>::is_always_lock_free);
+#endif
 
 class ExclusiveMonitor {
 public:
@@ -39,7 +45,7 @@ public:
         const VAddr masked_address = address & RESERVATION_GRANULE_MASK;
 
 #ifdef ARCHITECTURE_arm64
-        std::atomic_ref<VAddr>{reservations[processor_id].address}.store(masked_address, std::memory_order_release);
+        boost::atomic_ref<VAddr>{reservations[processor_id].address}.store(masked_address, boost::memory_order_release);
         const T value = op();
         std::memcpy(reservations[processor_id].value.data(), &value, sizeof(T));
 #else
