@@ -15,6 +15,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ios-core-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ios-core:
     runs-on: macos-15
@@ -36,6 +40,7 @@ jobs:
           set -o pipefail
           cmake -S . -B build-ios -G Ninja \
             -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_SYSTEM_PROCESSOR=arm64 \
             -DCMAKE_OSX_SYSROOT=iphoneos \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
@@ -48,6 +53,7 @@ jobs:
             -DENABLE_UPDATE_CHECKER=OFF -DENABLE_WERROR=OFF \
             -DLICHII_USE_CPM=ON -DCPMUTIL_FORCE_BUNDLED=ON \
             -DLICHII_USE_EXTERNAL_FFMPEG=ON -DLICHII_USE_BUNDLED_FFMPEG=OFF \
+            -DOPENSSL_TARGET_PLATFORM=ios64-xcrun \
             -DLICHII_USE_BUNDLED_MOLTENVK=OFF \
             -DMOLTENVK_LIBRARY="$PWD/.ios-deps/MoltenVK/MoltenVK/static/MoltenVK.xcframework/ios-arm64/libMoltenVK.a" \
             2>&1 | tee ios-configure.log
@@ -70,3 +76,4 @@ jobs:
         if: always()
         run: |
           echo 'This job cross-compiles the existing emulator core. It does not build an iOS app or IPA and does not test JIT execution or game compatibility.' >> "$GITHUB_STEP_SUMMARY"
+
