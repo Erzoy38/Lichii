@@ -280,6 +280,17 @@ android {
     }
 }
 
+// CMake supplies SDL's Java sources; compile them only after the native build has prepared them.
+android.applicationVariants.all {
+    val variantName = name.replaceFirstChar { it.uppercase() }
+    tasks.matching {
+        it.name == "compile${variantName}Kotlin" ||
+            it.name == "compile${variantName}JavaWithJavac"
+    }.configureEach {
+        dependsOn("externalNativeBuild$variantName")
+    }
+}
+
 idea {
     module {
         // Inclusion to exclude build/ dir from non-Android
@@ -419,3 +430,4 @@ afterEvaluate {
         }
     }
 }
+
