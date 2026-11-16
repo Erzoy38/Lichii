@@ -1,0 +1,71 @@
+name: Experimental iOS core compilation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [mobile/ios-core]
+    paths:
+      - '.github/workflows/ios-core.yml'
+      - 'CMakeLists.txt'
+      - 'CMakeModules/**'
+      - 'externals/**'
+      - 'cpmfile.json'
+      - 'src/**'
+
+permissions:
+  contents: read
+
+jobs:
+  ios-core:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Install host build tools
+        run: brew install cmake ninja autoconf automake libtool pkg-config nasm
+      - name: Download iOS MoltenVK
+        run: |
+          mkdir -p .ios-deps
+          curl --fail --location --retry 3 https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-ios.tar -o .ios-deps/MoltenVK-ios.tar
+          echo 'b5d947b1660e6e9fed40b9cd2387e160aaab9e80b775c0cef7e14059405178c1  .ios-deps/MoltenVK-ios.tar' | shasum -a 256 --check
+          tar -xf .ios-deps/MoltenVK-ios.tar -C .ios-deps
+      - name: Configure the real C++ core for iPhone ARM64
+        run: |
+          set -o pipefail
+          cmake -S . -B build-ios -G Ninja \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphoneos \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+            -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_QT=OFF -DLICHII_CMD=OFF -DLICHII_ROOM=OFF \
+            -DBUILD_TESTING=OFF -DLICHII_TESTS=OFF -DDYNARMIC_TESTS=OFF \
+            -DENABLE_LIBUSB=OFF -DENABLE_CUBEB=OFF -DENABLE_WEB_SERVICE=OFF \
+            -DENABLE_UPDATE_CHECKER=OFF -DENABLE_WERROR=OFF \
+            -DLICHII_USE_CPM=ON -DCPMUTIL_FORCE_BUNDLED=ON \
+            -DLICHII_USE_BUNDLED_MOLTENVK=OFF \
+            -DMOLTENVK_LIBRARY="$PWD/.ios-deps/MoltenVK/MoltenVK/static/MoltenVK.xcframework/ios-arm64/libMoltenVK.a" \
+            2>&1 | tee ios-configure.log
+      - name: Compile the emulator core
+        run: |
+          set -o pipefail
+          cmake --build build-ios --target core --parallel 3 2>&1 | tee ios-build.log
+      - name: Preserve compilation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-core-compilation-evidence
+          if-no-files-found: error
+          path: |
+            ios-configure.log
+            ios-build.log
+            build-ios/CMakeCache.txt
+            build-ios/CMakeFiles/CMakeConfigureLog.yaml
+      - name: Explain artifact scope
+        if: always()
+        run: |
+          echo 'This job cross-compiles the existing emulator core. It does not build an iOS app or IPA and does not test JIT execution or game compatibility.' >> "$GITHUB_STEP_SUMMARY"

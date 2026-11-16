@@ -3,7 +3,11 @@
 
 cmake_minimum_required(VERSION 3.31)
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "macOS deployment target")
+if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "16.0" CACHE STRING "iOS deployment target")
+else()
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "macOS deployment target")
+endif()
 project(lichii)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
@@ -552,7 +556,12 @@ endfunction()
 # =============================================
 
 if (APPLE)
-    foreach(fw Carbon Metal Cocoa IOKit CoreVideo CoreMedia Security UniformTypeIdentifiers Foundation)
+    if (IOS)
+        set(LICHII_APPLE_FRAMEWORKS UIKit Metal QuartzCore CoreVideo CoreMedia Security UniformTypeIdentifiers Foundation)
+    else()
+        set(LICHII_APPLE_FRAMEWORKS Carbon Metal Cocoa IOKit CoreVideo CoreMedia Security UniformTypeIdentifiers Foundation)
+    endif()
+    foreach(fw IN LISTS LICHII_APPLE_FRAMEWORKS)
         find_library(${fw}_LIBRARY ${fw} REQUIRED)
         list(APPEND PLATFORM_LIBRARIES ${${fw}_LIBRARY})
     endforeach()

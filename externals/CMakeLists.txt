@@ -446,7 +446,11 @@ if (LICHII_CRASH_DUMPS AND NOT TARGET libbreakpad_client)
     endif()
 endif()
 
-if (APPLE)
+if (IOS)
+    if (NOT MOLTENVK_LIBRARY OR NOT EXISTS "${MOLTENVK_LIBRARY}")
+        message(FATAL_ERROR "iOS requires MOLTENVK_LIBRARY pointing to an iOS MoltenVK library; the bundled macOS library cannot be used")
+    endif()
+elseif (APPLE)
     # moltenvk
     if (NOT LICHII_USE_BUNDLED_MOLTENVK)
         find_library(MOLTENVK_LIBRARY MoltenVK)
